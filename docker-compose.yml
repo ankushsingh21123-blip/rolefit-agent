@@ -1,0 +1,38 @@
+# RoleFit Agent — one-command local stack (app + pgvector Postgres).
+# Copy .env.example to .env and set GEMINI_API_KEY for the real LLM path;
+# without a key the app still runs, in clearly-labelled demo mode.
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: rolefit
+      POSTGRES_PASSWORD: rolefit
+      POSTGRES_DB: rolefit
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rolefit -d rolefit"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    environment:
+      STORE: postgres
+      DATABASE_URL: postgresql://rolefit:rolefit@db:5432/rolefit
+      GEMINI_MODEL: gemini-3.6-flash
+      GEMINI_EMBED_MODEL: gemini-embedding-001
+      EMBEDDING_DIM: "3072"
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
